@@ -1,0 +1,804 @@
+#+TITLE: Neural Network and Signal Processing
+
+https://towardsdatascience.com/machine-learning-and-signal-processing-103281d27c4b
+
+
+#+begin_src jupyter-python :results none
+import numpy as np
+import datetime as dt
+
+import matplotlib.pyplot as plt
+import matplotlib as mpl
+mpl.rc("figure", facecolor="white", dpi=160)
+
+import tensorflow as tf
+from tensorflow import keras
+
+from scipy.fft import fft
+#+end_src
+
+* Prediction with Neural Network
+** The model to predict a time series
+
+#+begin_src jupyter-python :results none
+def dnn_keras_tspred_model():
+    model = keras.Sequential([
+        keras.Input(shape=(train_data.shape[1],)),
+        keras.layers.Dense(32, activation='relu'),
+        keras.layers.Dense(8, activation='relu'),
+        keras.layers.Dense(1)
+    ])
+
+    model.compile(loss='mse', optimizer='adam', metrics=['mae'])
+    model.summary()
+    return model
+#+end_src
+
+** Generate a superposition of sine waves with additional noise
+
+#+begin_src jupyter-python
+num_train_data = 4000
+num_test_data = 1000
+timestep = 0.1
+tm = np.arange(0, (num_train_data + num_test_data) * timestep, timestep)
+y = np.sin(tm) + np.sin(tm * np.pi/2) + np.sin(tm * (-3 * np.pi / 2))
+SNR = 10
+ypn = y + np.random.normal(0, 10**(-SNR/20) * 1, len(y))  # sine magnitude is 1
+
+p = plt.plot(tm[0:100], y[0:100])
+p = plt.plot(tm[0:100], ypn[0:100], 'r')
+plt.grid()
+#+end_src
+
+#+RESULTS:
+[[file:./.ob-jupyter/246b4e8ec001ca7a35a2b232529b8fd72dfc6969.png]]
+
+** Generate training data and labels
+
+#+begin_src jupyter-python
+dnn_numinputs = 64
+train_n_batch = num_train_data - dnn_numinputs - 1  # (4000 - 64 - 1) = 3935, leave 1 out for label
+train_data = np.empty((0, dnn_numinputs))
+
+for k in range(train_n_batch):
+    train_data = np.vstack([train_data, ypn[k : k+dnn_numinputs]])
+train_labels = y[dnn_numinputs : num_train_data-1]  # 64:3999
+
+print(train_data.shape, train_labels.shape)
+#+end_src
+
+#+RESULTS:
+: (3935, 64) (3935,)
+
+** Training
+
+#+begin_src jupyter-python
+keras.backend.clear_session()
+
+model = dnn_keras_tspred_model()
+#+end_src
+
+#+RESULTS:
+#+begin_example
+Model: "sequential"
+_________________________________________________________________
+Layer (type)                 Output Shape              Param #
+=================================================================
+dense (Dense)                (None, 32)                2080
+_________________________________________________________________
+dense_1 (Dense)              (None, 8)                 264
+_________________________________________________________________
+dense_2 (Dense)              (None, 1)                 9
+=================================================================
+Total params: 2,353
+Trainable params: 2,353
+Non-trainable params: 0
+_________________________________________________________________
+2021-11-26 21:13:27.692689: W tensorflow/stream_executor/platform/default/dso_loader.cc:64] Could not load dynamic library 'libcuda.so.1'; dlerror: libcuda.so.1: cannot open shared object file: No such file or directory
+2021-11-26 21:13:27.692709: W tensorflow/stream_executor/cuda/cuda_driver.cc:269] failed call to cuInit: UNKNOWN ERROR (303)
+2021-11-26 21:13:27.692723: I tensorflow/stream_executor/cuda/cuda_diagnostics.cc:156] kernel driver does not appear to be running on this host (kiwi): /proc/driver/nvidia/version does not exist
+2021-11-26 21:13:27.694066: I tensorflow/core/platform/cpu_feature_guard.cc:142] This TensorFlow binary is optimized with oneAPI Deep Neural Network Library (oneDNN) to use the following CPU instructions in performance-critical operations:  SSE4.1 SSE4.2 AVX AVX2 FMA
+To enable them in other operations, rebuild TensorFlow with the appropriate compiler flags.
+#+end_example
+
+#+begin_src jupyter-python
+n_epochs = 100
+start = dt.datetime.now()
+history = model.fit(train_data, train_labels, epochs=n_epochs, validation_split=0.2)
+dnn_train_time = (dt.datetime.now() - start).total_seconds()
+print(f"Train time: {dnn_train_time}s")
+#+end_src
+
+#+RESULTS:
+#+begin_example
+2021-11-26 21:13:28.056634: I tensorflow/compiler/mlir/mlir_graph_optimization_pass.cc:185] None of the MLIR Optimization Passes are enabled (registered 2)
+Epoch 1/100
+99/99 [==============================] - 0s 1ms/step - loss: 0.3056 - mae: 0.4080 - val_loss: 0.0970 - val_mae: 0.2484
+Epoch 2/100
+99/99 [==============================] - 0s 548us/step - loss: 0.0879 - mae: 0.2356 - val_loss: 0.0688 - val_mae: 0.2087
+Epoch 3/100
+99/99 [==============================] - 0s 554us/step - loss: 0.0633 - mae: 0.2000 - val_loss: 0.0543 - val_mae: 0.1859
+Epoch 4/100
+99/99 [==============================] - 0s 553us/step - loss: 0.0488 - mae: 0.1746 - val_loss: 0.0481 - val_mae: 0.1755
+Epoch 5/100
+99/99 [==============================] - 0s 533us/step - loss: 0.0409 - mae: 0.1599 - val_loss: 0.0427 - val_mae: 0.1666
+Epoch 6/100
+99/99 [==============================] - 0s 550us/step - loss: 0.0354 - mae: 0.1487 - val_loss: 0.0367 - val_mae: 0.1527
+Epoch 7/100
+99/99 [==============================] - 0s 544us/step - loss: 0.0318 - mae: 0.1409 - val_loss: 0.0339 - val_mae: 0.1480
+Epoch 8/100
+99/99 [==============================] - 0s 531us/step - loss: 0.0289 - mae: 0.1346 - val_loss: 0.0325 - val_mae: 0.1440
+Epoch 9/100
+99/99 [==============================] - 0s 518us/step - loss: 0.0270 - mae: 0.1303 - val_loss: 0.0297 - val_mae: 0.1382
+Epoch 10/100
+99/99 [==============================] - 0s 535us/step - loss: 0.0251 - mae: 0.1267 - val_loss: 0.0285 - val_mae: 0.1346
+Epoch 11/100
+99/99 [==============================] - 0s 524us/step - loss: 0.0236 - mae: 0.1223 - val_loss: 0.0279 - val_mae: 0.1330
+Epoch 12/100
+99/99 [==============================] - 0s 538us/step - loss: 0.0225 - mae: 0.1191 - val_loss: 0.0254 - val_mae: 0.1265
+Epoch 13/100
+99/99 [==============================] - 0s 518us/step - loss: 0.0211 - mae: 0.1155 - val_loss: 0.0245 - val_mae: 0.1245
+Epoch 14/100
+99/99 [==============================] - 0s 530us/step - loss: 0.0201 - mae: 0.1133 - val_loss: 0.0252 - val_mae: 0.1272
+Epoch 15/100
+99/99 [==============================] - 0s 536us/step - loss: 0.0193 - mae: 0.1109 - val_loss: 0.0252 - val_mae: 0.1252
+Epoch 16/100
+99/99 [==============================] - 0s 524us/step - loss: 0.0189 - mae: 0.1103 - val_loss: 0.0226 - val_mae: 0.1186
+Epoch 17/100
+99/99 [==============================] - 0s 504us/step - loss: 0.0181 - mae: 0.1074 - val_loss: 0.0220 - val_mae: 0.1173
+Epoch 18/100
+99/99 [==============================] - 0s 528us/step - loss: 0.0174 - mae: 0.1050 - val_loss: 0.0214 - val_mae: 0.1155
+Epoch 19/100
+99/99 [==============================] - 0s 511us/step - loss: 0.0163 - mae: 0.1024 - val_loss: 0.0233 - val_mae: 0.1200
+Epoch 20/100
+99/99 [==============================] - 0s 540us/step - loss: 0.0165 - mae: 0.1029 - val_loss: 0.0208 - val_mae: 0.1139
+Epoch 21/100
+99/99 [==============================] - 0s 537us/step - loss: 0.0158 - mae: 0.1009 - val_loss: 0.0208 - val_mae: 0.1141
+Epoch 22/100
+99/99 [==============================] - 0s 536us/step - loss: 0.0152 - mae: 0.0986 - val_loss: 0.0190 - val_mae: 0.1085
+Epoch 23/100
+99/99 [==============================] - 0s 501us/step - loss: 0.0150 - mae: 0.0984 - val_loss: 0.0200 - val_mae: 0.1123
+Epoch 24/100
+99/99 [==============================] - 0s 526us/step - loss: 0.0146 - mae: 0.0969 - val_loss: 0.0198 - val_mae: 0.1103
+Epoch 25/100
+99/99 [==============================] - 0s 553us/step - loss: 0.0142 - mae: 0.0949 - val_loss: 0.0182 - val_mae: 0.1065
+Epoch 26/100
+99/99 [==============================] - 0s 500us/step - loss: 0.0142 - mae: 0.0954 - val_loss: 0.0186 - val_mae: 0.1077
+Epoch 27/100
+99/99 [==============================] - 0s 533us/step - loss: 0.0139 - mae: 0.0944 - val_loss: 0.0192 - val_mae: 0.1086
+Epoch 28/100
+99/99 [==============================] - 0s 512us/step - loss: 0.0137 - mae: 0.0938 - val_loss: 0.0199 - val_mae: 0.1096
+Epoch 29/100
+99/99 [==============================] - 0s 521us/step - loss: 0.0137 - mae: 0.0937 - val_loss: 0.0202 - val_mae: 0.1117
+Epoch 30/100
+99/99 [==============================] - 0s 514us/step - loss: 0.0129 - mae: 0.0911 - val_loss: 0.0170 - val_mae: 0.1020
+Epoch 31/100
+99/99 [==============================] - 0s 530us/step - loss: 0.0128 - mae: 0.0904 - val_loss: 0.0166 - val_mae: 0.1004
+Epoch 32/100
+99/99 [==============================] - 0s 551us/step - loss: 0.0124 - mae: 0.0888 - val_loss: 0.0175 - val_mae: 0.1036
+Epoch 33/100
+99/99 [==============================] - 0s 521us/step - loss: 0.0124 - mae: 0.0892 - val_loss: 0.0177 - val_mae: 0.1050
+Epoch 34/100
+99/99 [==============================] - 0s 534us/step - loss: 0.0123 - mae: 0.0884 - val_loss: 0.0178 - val_mae: 0.1054
+Epoch 35/100
+99/99 [==============================] - 0s 537us/step - loss: 0.0122 - mae: 0.0880 - val_loss: 0.0161 - val_mae: 0.0988
+Epoch 36/100
+99/99 [==============================] - 0s 500us/step - loss: 0.0117 - mae: 0.0861 - val_loss: 0.0157 - val_mae: 0.0986
+Epoch 37/100
+99/99 [==============================] - 0s 537us/step - loss: 0.0116 - mae: 0.0863 - val_loss: 0.0168 - val_mae: 0.1025
+Epoch 38/100
+99/99 [==============================] - 0s 525us/step - loss: 0.0119 - mae: 0.0868 - val_loss: 0.0172 - val_mae: 0.1027
+Epoch 39/100
+99/99 [==============================] - 0s 529us/step - loss: 0.0114 - mae: 0.0855 - val_loss: 0.0160 - val_mae: 0.0990
+Epoch 40/100
+99/99 [==============================] - 0s 513us/step - loss: 0.0109 - mae: 0.0834 - val_loss: 0.0166 - val_mae: 0.1013
+Epoch 41/100
+99/99 [==============================] - 0s 512us/step - loss: 0.0109 - mae: 0.0835 - val_loss: 0.0156 - val_mae: 0.0969
+Epoch 42/100
+99/99 [==============================] - 0s 529us/step - loss: 0.0107 - mae: 0.0829 - val_loss: 0.0155 - val_mae: 0.0980
+Epoch 43/100
+99/99 [==============================] - 0s 527us/step - loss: 0.0106 - mae: 0.0820 - val_loss: 0.0153 - val_mae: 0.0964
+Epoch 44/100
+99/99 [==============================] - 0s 539us/step - loss: 0.0107 - mae: 0.0822 - val_loss: 0.0156 - val_mae: 0.0984
+Epoch 45/100
+99/99 [==============================] - 0s 533us/step - loss: 0.0102 - mae: 0.0805 - val_loss: 0.0159 - val_mae: 0.0996
+Epoch 46/100
+99/99 [==============================] - 0s 538us/step - loss: 0.0103 - mae: 0.0809 - val_loss: 0.0143 - val_mae: 0.0944
+Epoch 47/100
+99/99 [==============================] - 0s 566us/step - loss: 0.0099 - mae: 0.0792 - val_loss: 0.0140 - val_mae: 0.0933
+Epoch 48/100
+99/99 [==============================] - 0s 544us/step - loss: 0.0103 - mae: 0.0809 - val_loss: 0.0147 - val_mae: 0.0954
+Epoch 49/100
+99/99 [==============================] - 0s 555us/step - loss: 0.0099 - mae: 0.0787 - val_loss: 0.0146 - val_mae: 0.0947
+Epoch 50/100
+99/99 [==============================] - 0s 548us/step - loss: 0.0097 - mae: 0.0786 - val_loss: 0.0161 - val_mae: 0.0998
+Epoch 51/100
+99/99 [==============================] - 0s 538us/step - loss: 0.0100 - mae: 0.0794 - val_loss: 0.0140 - val_mae: 0.0936
+Epoch 52/100
+99/99 [==============================] - 0s 569us/step - loss: 0.0096 - mae: 0.0779 - val_loss: 0.0147 - val_mae: 0.0957
+Epoch 53/100
+99/99 [==============================] - 0s 571us/step - loss: 0.0095 - mae: 0.0776 - val_loss: 0.0154 - val_mae: 0.0979
+Epoch 54/100
+99/99 [==============================] - 0s 530us/step - loss: 0.0098 - mae: 0.0787 - val_loss: 0.0143 - val_mae: 0.0948
+Epoch 55/100
+99/99 [==============================] - 0s 504us/step - loss: 0.0093 - mae: 0.0771 - val_loss: 0.0133 - val_mae: 0.0904
+Epoch 56/100
+99/99 [==============================] - 0s 531us/step - loss: 0.0089 - mae: 0.0755 - val_loss: 0.0149 - val_mae: 0.0963
+Epoch 57/100
+99/99 [==============================] - 0s 561us/step - loss: 0.0088 - mae: 0.0743 - val_loss: 0.0141 - val_mae: 0.0941
+Epoch 58/100
+99/99 [==============================] - 0s 510us/step - loss: 0.0087 - mae: 0.0741 - val_loss: 0.0148 - val_mae: 0.0970
+Epoch 59/100
+99/99 [==============================] - 0s 507us/step - loss: 0.0087 - mae: 0.0737 - val_loss: 0.0128 - val_mae: 0.0899
+Epoch 60/100
+99/99 [==============================] - 0s 526us/step - loss: 0.0085 - mae: 0.0733 - val_loss: 0.0148 - val_mae: 0.0966
+Epoch 61/100
+99/99 [==============================] - 0s 516us/step - loss: 0.0084 - mae: 0.0730 - val_loss: 0.0153 - val_mae: 0.0978
+Epoch 62/100
+99/99 [==============================] - 0s 550us/step - loss: 0.0086 - mae: 0.0741 - val_loss: 0.0131 - val_mae: 0.0907
+Epoch 63/100
+99/99 [==============================] - 0s 565us/step - loss: 0.0085 - mae: 0.0734 - val_loss: 0.0148 - val_mae: 0.0960
+Epoch 64/100
+99/99 [==============================] - 0s 520us/step - loss: 0.0082 - mae: 0.0718 - val_loss: 0.0130 - val_mae: 0.0914
+Epoch 65/100
+99/99 [==============================] - 0s 524us/step - loss: 0.0083 - mae: 0.0719 - val_loss: 0.0139 - val_mae: 0.0934
+Epoch 66/100
+99/99 [==============================] - 0s 526us/step - loss: 0.0079 - mae: 0.0708 - val_loss: 0.0130 - val_mae: 0.0917
+Epoch 67/100
+99/99 [==============================] - 0s 543us/step - loss: 0.0079 - mae: 0.0704 - val_loss: 0.0138 - val_mae: 0.0930
+Epoch 68/100
+99/99 [==============================] - 0s 548us/step - loss: 0.0077 - mae: 0.0699 - val_loss: 0.0131 - val_mae: 0.0921
+Epoch 69/100
+99/99 [==============================] - 0s 514us/step - loss: 0.0079 - mae: 0.0704 - val_loss: 0.0137 - val_mae: 0.0924
+Epoch 70/100
+99/99 [==============================] - 0s 513us/step - loss: 0.0077 - mae: 0.0690 - val_loss: 0.0139 - val_mae: 0.0938
+Epoch 71/100
+99/99 [==============================] - 0s 534us/step - loss: 0.0077 - mae: 0.0699 - val_loss: 0.0146 - val_mae: 0.0978
+Epoch 72/100
+99/99 [==============================] - 0s 533us/step - loss: 0.0075 - mae: 0.0690 - val_loss: 0.0130 - val_mae: 0.0909
+Epoch 73/100
+99/99 [==============================] - 0s 549us/step - loss: 0.0076 - mae: 0.0687 - val_loss: 0.0138 - val_mae: 0.0946
+Epoch 74/100
+99/99 [==============================] - 0s 537us/step - loss: 0.0075 - mae: 0.0685 - val_loss: 0.0140 - val_mae: 0.0953
+Epoch 75/100
+99/99 [==============================] - 0s 539us/step - loss: 0.0074 - mae: 0.0686 - val_loss: 0.0128 - val_mae: 0.0907
+Epoch 76/100
+99/99 [==============================] - 0s 518us/step - loss: 0.0073 - mae: 0.0678 - val_loss: 0.0139 - val_mae: 0.0942
+Epoch 77/100
+99/99 [==============================] - 0s 527us/step - loss: 0.0072 - mae: 0.0668 - val_loss: 0.0142 - val_mae: 0.0956
+Epoch 78/100
+99/99 [==============================] - 0s 531us/step - loss: 0.0071 - mae: 0.0668 - val_loss: 0.0135 - val_mae: 0.0927
+Epoch 79/100
+99/99 [==============================] - 0s 543us/step - loss: 0.0073 - mae: 0.0674 - val_loss: 0.0127 - val_mae: 0.0900
+Epoch 80/100
+99/99 [==============================] - 0s 513us/step - loss: 0.0068 - mae: 0.0657 - val_loss: 0.0139 - val_mae: 0.0944
+Epoch 81/100
+99/99 [==============================] - 0s 527us/step - loss: 0.0076 - mae: 0.0686 - val_loss: 0.0126 - val_mae: 0.0894
+Epoch 82/100
+99/99 [==============================] - 0s 518us/step - loss: 0.0071 - mae: 0.0666 - val_loss: 0.0129 - val_mae: 0.0904
+Epoch 83/100
+99/99 [==============================] - 0s 533us/step - loss: 0.0071 - mae: 0.0661 - val_loss: 0.0138 - val_mae: 0.0932
+Epoch 84/100
+99/99 [==============================] - 0s 522us/step - loss: 0.0070 - mae: 0.0656 - val_loss: 0.0127 - val_mae: 0.0891
+Epoch 85/100
+99/99 [==============================] - 0s 533us/step - loss: 0.0068 - mae: 0.0648 - val_loss: 0.0122 - val_mae: 0.0880
+Epoch 86/100
+99/99 [==============================] - 0s 532us/step - loss: 0.0067 - mae: 0.0645 - val_loss: 0.0128 - val_mae: 0.0906
+Epoch 87/100
+99/99 [==============================] - 0s 529us/step - loss: 0.0068 - mae: 0.0651 - val_loss: 0.0128 - val_mae: 0.0904
+Epoch 88/100
+99/99 [==============================] - 0s 532us/step - loss: 0.0068 - mae: 0.0650 - val_loss: 0.0124 - val_mae: 0.0889
+Epoch 89/100
+99/99 [==============================] - 0s 528us/step - loss: 0.0066 - mae: 0.0642 - val_loss: 0.0129 - val_mae: 0.0912
+Epoch 90/100
+99/99 [==============================] - 0s 519us/step - loss: 0.0064 - mae: 0.0635 - val_loss: 0.0127 - val_mae: 0.0903
+Epoch 91/100
+99/99 [==============================] - 0s 523us/step - loss: 0.0064 - mae: 0.0632 - val_loss: 0.0125 - val_mae: 0.0892
+Epoch 92/100
+99/99 [==============================] - 0s 532us/step - loss: 0.0063 - mae: 0.0625 - val_loss: 0.0121 - val_mae: 0.0871
+Epoch 93/100
+99/99 [==============================] - 0s 522us/step - loss: 0.0064 - mae: 0.0628 - val_loss: 0.0124 - val_mae: 0.0892
+Epoch 94/100
+99/99 [==============================] - 0s 510us/step - loss: 0.0066 - mae: 0.0642 - val_loss: 0.0135 - val_mae: 0.0917
+Epoch 95/100
+99/99 [==============================] - 0s 534us/step - loss: 0.0066 - mae: 0.0641 - val_loss: 0.0120 - val_mae: 0.0883
+Epoch 96/100
+99/99 [==============================] - 0s 514us/step - loss: 0.0065 - mae: 0.0638 - val_loss: 0.0127 - val_mae: 0.0894
+Epoch 97/100
+99/99 [==============================] - 0s 541us/step - loss: 0.0060 - mae: 0.0613 - val_loss: 0.0129 - val_mae: 0.0903
+Epoch 98/100
+99/99 [==============================] - 0s 519us/step - loss: 0.0061 - mae: 0.0613 - val_loss: 0.0127 - val_mae: 0.0897
+Epoch 99/100
+99/99 [==============================] - 0s 522us/step - loss: 0.0066 - mae: 0.0640 - val_loss: 0.0124 - val_mae: 0.0878
+Epoch 100/100
+99/99 [==============================] - 0s 519us/step - loss: 0.0061 - mae: 0.0618 - val_loss: 0.0129 - val_mae: 0.0898
+Train time: 5.993583s
+#+end_example
+
+#+begin_src jupyter-python
+p = plt.plot(history.epoch, history.history['val_loss'], label='val loss')
+plt.legend();
+plt.grid('minor')
+#+end_src
+
+#+RESULTS:
+[[file:./.ob-jupyter/f1a964aca1c05dd9200bbfb7220045f1c2dffb3c.png]]
+
+** Generate test data
+
+#+begin_src jupyter-python
+train_n_batch, num_train_data
+#+end_src
+
+#+RESULTS:
+| 3935 | 4000 |
+
+#+begin_src jupyter-python
+dnn_numinputs = 64
+test_n_batch = num_test_data - dnn_numinputs - 1
+test_data = np.empty((test_n_batch, dnn_numinputs))
+
+start_idx = train_n_batch  # continue after the last train batch
+for k in range(test_n_batch):
+    idx = train_n_batch + k
+    test_data[k, :] = ypn[idx : idx+dnn_numinputs]
+test_labels = y[train_n_batch+dnn_numinputs : train_n_batch+num_test_data-1]  # 64:3999
+
+print(test_data.shape, test_labels.shape)
+#+end_src
+
+#+RESULTS:
+: (935, 64) (935,)
+
+** Test
+
+#+begin_src jupyter-python
+dnn_pred = model.predict(test_data).flatten()
+p = plt.plot(dnn_pred[0:100])
+p = plt.plot(test_labels[0:100], 'r')
+#+end_src
+
+#+RESULTS:
+[[file:./.ob-jupyter/4e1a82857d97519743880c7385f0faca7889f6dd.png]]
+
+
+* Prediction with LMS
+
+#+begin_src jupyter-python
+M = 1000
+L = 64
+yrlms = np.zeros(M+L)
+wn = np.zeros(L)
+mu = 0.005
+
+for k in range(L, M+L):
+    yrlms[k] = np.dot(ypn[k-L:k], wn)
+    e = ypn[k] - yrlms[k]
+    wn = wn + (mu * ypn[k-L:k] * e)
+
+p = plt.plot(yrlms[600:800]);
+p = plt.plot(y[600:800], 'r');
+#+end_src
+
+#+RESULTS:
+[[file:./.ob-jupyter/70cb0a8efc60bc59c82d035f9a72a2fb474eb030.png]]
+
+* Compare LMS and Neural Network
+
+#+begin_src jupyter-python
+dnn_err = dnn_pred - test_labels
+lms_err = yrlms[0:M] - y[0:M]
+dnn_mse = 10*np.log10(np.mean(pow(np.abs(dnn_err),2)))
+lms_mse = 10*np.log10(np.mean(pow(np.abs(lms_err[200:M]),2)))  # cut off converging part
+lms_sigpow = 10*np.log10(np.mean(pow(np.abs(y[0:M]),2)))
+dnn_sigpow = 10*np.log10(np.mean(pow(np.abs(test_labels),2)))
+
+p = plt.plot(dnn_err)
+p = plt.plot(lms_err,'r')
+p = plt.show()
+print("Neural network SNR:", dnn_sigpow - dnn_mse)
+print("LMS Prediction SNR:", lms_sigpow - lms_mse)
+print(f"Neural network MSE = {dnn_mse} dB")
+print(f"LMS Prediction MSE = {lms_mse} dB")
+#+end_src
+
+#+RESULTS:
+:RESULTS:
+[[file:./.ob-jupyter/5bdab4fabda0c10988355fc7ee74680732361cf6.png]]
+: Neural network SNR: 20.814226924727283
+: LMS Prediction SNR: 14.087391222413359
+: Neural network MSE = -19.123007348970887 dB
+: LMS Prediction MSE = -12.295709829322378 dB
+:END:
+
+* FFT using a Neural Network
+
+** Direct FFT
+
+#+begin_src jupyter-python
+N = 64 # 64-point FFT
+
+yf = fft(ypn[0:N])  # FFT of noisy signal
+xf = np.linspace(0., 1./(2*timestep), int(N/2))  # 0 to Fs/2
+
+p = plt.plot(xf, 2./N * np.abs(yf[:N//2]))
+#+end_src
+
+#+RESULTS:
+[[file:./.ob-jupyter/6be4638bdf7c1b8afd104fde3445d7d4e12a3c1f.png]]
+
+** Use neural network to FFT
+
+- 64-complex input, 64-complex output (not 1-output as before)
+#+begin_src jupyter-python :results none
+def dnn_keras_fft_model(NFFT):
+    model = keras.Sequential([
+        keras.layers.InputLayer(input_shape=2*NFFT),
+        keras.layers.Dense(NFFT*2, activation=tf.nn.relu),
+        keras.layers.Dense(NFFT*2, activation=tf.nn.relu),
+                keras.layers.Dense(NFFT*2)
+    ])
+    model.compile(loss='mse', optimizer='adam', metrics=['mae'])
+    model.summary()
+    return model
+#+end_src
+
+- Training
+
+#+begin_src jupyter-python
+NFFT = 64
+model = dnn_keras_fft_model(NFFT)
+#+end_src
+
+#+RESULTS:
+#+begin_example
+Model: "sequential_1"
+_________________________________________________________________
+Layer (type)                 Output Shape              Param #
+=================================================================
+dense_3 (Dense)              (None, 128)               16512
+_________________________________________________________________
+dense_4 (Dense)              (None, 128)               16512
+_________________________________________________________________
+dense_5 (Dense)              (None, 128)               16512
+=================================================================
+Total params: 49,536
+Trainable params: 49,536
+Non-trainable params: 0
+_________________________________________________________________
+#+end_example
+
+#+begin_src jupyter-python
+num_batches = 10000
+
+train_data = np.random.normal(0, 1, (num_batches, NFFT*2))
+train_labels = np.random.normal(0, 1, (num_batches, NFFT*2))
+
+for el in range(num_batches):
+    fftin = train_data[el, 0::2] + 1j * train_data[el, 1::2]
+    train_labels[el, 0::2] = fft(fftin).real
+    train_labels[el, 1::2] = fft(fftin).imag
+
+n_epochs = 100
+start = dt.datetime.now()
+history = model.fit(train_data, train_labels, epochs=n_epochs, validation_split=0.2)
+#+end_src
+
+#+RESULTS:
+#+begin_example
+Epoch 1/100
+250/250 [==============================] - 0s 759us/step - loss: 55.0382 - mae: 5.9064 - val_loss: 43.4854 - val_mae: 5.2601
+Epoch 2/100
+250/250 [==============================] - 0s 548us/step - loss: 36.0526 - mae: 4.7802 - val_loss: 31.4461 - val_mae: 4.4705
+Epoch 3/100
+250/250 [==============================] - 0s 562us/step - loss: 27.4595 - mae: 4.1737 - val_loss: 25.6177 - val_mae: 4.0328
+Epoch 4/100
+250/250 [==============================] - 0s 555us/step - loss: 22.5310 - mae: 3.7771 - val_loss: 21.5553 - val_mae: 3.6941
+Epoch 5/100
+250/250 [==============================] - 0s 561us/step - loss: 18.9010 - mae: 3.4566 - val_loss: 18.3727 - val_mae: 3.4057
+Epoch 6/100
+250/250 [==============================] - 0s 557us/step - loss: 15.9327 - mae: 3.1700 - val_loss: 15.6202 - val_mae: 3.1379
+Epoch 7/100
+250/250 [==============================] - 0s 547us/step - loss: 13.4326 - mae: 2.9073 - val_loss: 13.3050 - val_mae: 2.8909
+Epoch 8/100
+250/250 [==============================] - 0s 551us/step - loss: 11.2473 - mae: 2.6546 - val_loss: 11.4062 - val_mae: 2.6701
+Epoch 9/100
+250/250 [==============================] - 0s 549us/step - loss: 9.3793 - mae: 2.4160 - val_loss: 9.5109 - val_mae: 2.4286
+Epoch 10/100
+250/250 [==============================] - 0s 558us/step - loss: 7.9846 - mae: 2.2221 - val_loss: 8.3955 - val_mae: 2.2744
+Epoch 11/100
+250/250 [==============================] - 0s 558us/step - loss: 7.0542 - mae: 2.0840 - val_loss: 7.3887 - val_mae: 2.1325
+Epoch 12/100
+250/250 [==============================] - 0s 559us/step - loss: 5.9689 - mae: 1.9121 - val_loss: 6.2224 - val_mae: 1.9504
+Epoch 13/100
+250/250 [==============================] - 0s 555us/step - loss: 5.1148 - mae: 1.7664 - val_loss: 5.6005 - val_mae: 1.8479
+Epoch 14/100
+250/250 [==============================] - 0s 551us/step - loss: 4.3977 - mae: 1.6330 - val_loss: 4.7588 - val_mae: 1.6972
+Epoch 15/100
+250/250 [==============================] - 0s 568us/step - loss: 3.7058 - mae: 1.4908 - val_loss: 4.1349 - val_mae: 1.5751
+Epoch 16/100
+250/250 [==============================] - 0s 561us/step - loss: 3.3645 - mae: 1.4156 - val_loss: 3.8750 - val_mae: 1.5203
+Epoch 17/100
+250/250 [==============================] - 0s 555us/step - loss: 3.0075 - mae: 1.3330 - val_loss: 3.4686 - val_mae: 1.4310
+Epoch 18/100
+250/250 [==============================] - 0s 553us/step - loss: 2.8267 - mae: 1.2871 - val_loss: 3.3991 - val_mae: 1.4135
+Epoch 19/100
+250/250 [==============================] - 0s 553us/step - loss: 2.6485 - mae: 1.2430 - val_loss: 2.9648 - val_mae: 1.3157
+Epoch 20/100
+250/250 [==============================] - 0s 551us/step - loss: 2.2287 - mae: 1.1332 - val_loss: 2.5370 - val_mae: 1.2079
+Epoch 21/100
+250/250 [==============================] - 0s 557us/step - loss: 1.9104 - mae: 1.0407 - val_loss: 2.4489 - val_mae: 1.1793
+Epoch 22/100
+250/250 [==============================] - 0s 564us/step - loss: 1.8445 - mae: 1.0188 - val_loss: 2.3182 - val_mae: 1.1457
+Epoch 23/100
+250/250 [==============================] - 0s 561us/step - loss: 1.8184 - mae: 1.0098 - val_loss: 2.2807 - val_mae: 1.1353
+Epoch 24/100
+250/250 [==============================] - 0s 555us/step - loss: 1.8094 - mae: 1.0061 - val_loss: 2.2512 - val_mae: 1.1261
+Epoch 25/100
+250/250 [==============================] - 0s 564us/step - loss: 1.6337 - mae: 0.9523 - val_loss: 1.8223 - val_mae: 0.9997
+Epoch 26/100
+250/250 [==============================] - 0s 577us/step - loss: 1.3875 - mae: 0.8644 - val_loss: 1.7241 - val_mae: 0.9687
+Epoch 27/100
+250/250 [==============================] - 0s 559us/step - loss: 1.3511 - mae: 0.8501 - val_loss: 1.7102 - val_mae: 0.9620
+Epoch 28/100
+250/250 [==============================] - 0s 555us/step - loss: 1.3440 - mae: 0.8443 - val_loss: 1.8529 - val_mae: 1.0010
+Epoch 29/100
+250/250 [==============================] - 0s 566us/step - loss: 1.3308 - mae: 0.8398 - val_loss: 1.6930 - val_mae: 0.9536
+Epoch 30/100
+250/250 [==============================] - 0s 556us/step - loss: 1.3355 - mae: 0.8396 - val_loss: 1.7320 - val_mae: 0.9601
+Epoch 31/100
+250/250 [==============================] - 0s 557us/step - loss: 1.3186 - mae: 0.8332 - val_loss: 1.6826 - val_mae: 0.9483
+Epoch 32/100
+250/250 [==============================] - 0s 562us/step - loss: 1.3131 - mae: 0.8314 - val_loss: 1.6921 - val_mae: 0.9498
+Epoch 33/100
+250/250 [==============================] - 0s 549us/step - loss: 1.3121 - mae: 0.8324 - val_loss: 1.7307 - val_mae: 0.9619
+Epoch 34/100
+250/250 [==============================] - 0s 554us/step - loss: 1.2974 - mae: 0.8263 - val_loss: 1.7080 - val_mae: 0.9552
+Epoch 35/100
+250/250 [==============================] - 0s 546us/step - loss: 1.3017 - mae: 0.8277 - val_loss: 1.7149 - val_mae: 0.9529
+Epoch 36/100
+250/250 [==============================] - 0s 548us/step - loss: 1.2719 - mae: 0.8190 - val_loss: 1.4706 - val_mae: 0.8848
+Epoch 37/100
+250/250 [==============================] - 0s 550us/step - loss: 0.9536 - mae: 0.6916 - val_loss: 1.2046 - val_mae: 0.7771
+Epoch 38/100
+250/250 [==============================] - 0s 557us/step - loss: 0.8972 - mae: 0.6621 - val_loss: 1.1473 - val_mae: 0.7568
+Epoch 39/100
+250/250 [==============================] - 0s 547us/step - loss: 0.8765 - mae: 0.6548 - val_loss: 1.1925 - val_mae: 0.7731
+Epoch 40/100
+250/250 [==============================] - 0s 559us/step - loss: 0.8833 - mae: 0.6538 - val_loss: 1.1454 - val_mae: 0.7533
+Epoch 41/100
+250/250 [==============================] - 0s 552us/step - loss: 0.8642 - mae: 0.6493 - val_loss: 1.1428 - val_mae: 0.7546
+Epoch 42/100
+250/250 [==============================] - 0s 561us/step - loss: 0.8670 - mae: 0.6508 - val_loss: 1.1647 - val_mae: 0.7565
+Epoch 43/100
+250/250 [==============================] - 0s 554us/step - loss: 0.8579 - mae: 0.6480 - val_loss: 1.1553 - val_mae: 0.7610
+Epoch 44/100
+250/250 [==============================] - 0s 548us/step - loss: 0.8560 - mae: 0.6479 - val_loss: 1.1707 - val_mae: 0.7599
+Epoch 45/100
+250/250 [==============================] - 0s 563us/step - loss: 0.8764 - mae: 0.6555 - val_loss: 1.1629 - val_mae: 0.7685
+Epoch 46/100
+250/250 [==============================] - 0s 548us/step - loss: 0.8895 - mae: 0.6578 - val_loss: 1.2094 - val_mae: 0.7720
+Epoch 47/100
+250/250 [==============================] - 0s 549us/step - loss: 0.8666 - mae: 0.6483 - val_loss: 1.1559 - val_mae: 0.7553
+Epoch 48/100
+250/250 [==============================] - 0s 551us/step - loss: 0.8930 - mae: 0.6587 - val_loss: 1.1653 - val_mae: 0.7620
+Epoch 49/100
+250/250 [==============================] - 0s 561us/step - loss: 0.8578 - mae: 0.6486 - val_loss: 1.1697 - val_mae: 0.7598
+Epoch 50/100
+250/250 [==============================] - 0s 559us/step - loss: 0.8466 - mae: 0.6438 - val_loss: 1.1815 - val_mae: 0.7653
+Epoch 51/100
+250/250 [==============================] - 0s 568us/step - loss: 0.8443 - mae: 0.6404 - val_loss: 1.1720 - val_mae: 0.7598
+Epoch 52/100
+250/250 [==============================] - 0s 554us/step - loss: 0.8452 - mae: 0.6426 - val_loss: 1.1257 - val_mae: 0.7506
+Epoch 53/100
+250/250 [==============================] - 0s 553us/step - loss: 0.8410 - mae: 0.6422 - val_loss: 1.1589 - val_mae: 0.7627
+Epoch 54/100
+250/250 [==============================] - 0s 559us/step - loss: 0.8371 - mae: 0.6411 - val_loss: 1.1216 - val_mae: 0.7470
+Epoch 55/100
+250/250 [==============================] - 0s 547us/step - loss: 0.8102 - mae: 0.6333 - val_loss: 1.1739 - val_mae: 0.7724
+Epoch 56/100
+250/250 [==============================] - 0s 549us/step - loss: 0.8253 - mae: 0.6381 - val_loss: 1.0948 - val_mae: 0.7493
+Epoch 57/100
+250/250 [==============================] - 0s 552us/step - loss: 0.7923 - mae: 0.6289 - val_loss: 1.1134 - val_mae: 0.7484
+Epoch 58/100
+250/250 [==============================] - 0s 554us/step - loss: 0.7922 - mae: 0.6284 - val_loss: 1.0553 - val_mae: 0.7320
+Epoch 59/100
+250/250 [==============================] - 0s 561us/step - loss: 0.7847 - mae: 0.6303 - val_loss: 1.0847 - val_mae: 0.7332
+Epoch 60/100
+250/250 [==============================] - 0s 546us/step - loss: 0.7507 - mae: 0.6130 - val_loss: 1.0188 - val_mae: 0.7112
+Epoch 61/100
+250/250 [==============================] - 0s 549us/step - loss: 0.7517 - mae: 0.6180 - val_loss: 1.0390 - val_mae: 0.7242
+Epoch 62/100
+250/250 [==============================] - 0s 549us/step - loss: 0.7322 - mae: 0.6115 - val_loss: 1.0715 - val_mae: 0.7400
+Epoch 63/100
+250/250 [==============================] - 0s 551us/step - loss: 0.7108 - mae: 0.6030 - val_loss: 1.0029 - val_mae: 0.7158
+Epoch 64/100
+250/250 [==============================] - 0s 555us/step - loss: 0.7145 - mae: 0.6025 - val_loss: 1.0018 - val_mae: 0.7107
+Epoch 65/100
+250/250 [==============================] - 0s 554us/step - loss: 0.6803 - mae: 0.5865 - val_loss: 0.9973 - val_mae: 0.6963
+Epoch 66/100
+250/250 [==============================] - 0s 560us/step - loss: 0.6746 - mae: 0.5844 - val_loss: 1.0012 - val_mae: 0.7002
+Epoch 67/100
+250/250 [==============================] - 0s 552us/step - loss: 0.6528 - mae: 0.5743 - val_loss: 0.9358 - val_mae: 0.6793
+Epoch 68/100
+250/250 [==============================] - 0s 544us/step - loss: 0.6432 - mae: 0.5695 - val_loss: 0.9543 - val_mae: 0.6838
+Epoch 69/100
+250/250 [==============================] - 0s 559us/step - loss: 0.6337 - mae: 0.5630 - val_loss: 0.9892 - val_mae: 0.6863
+Epoch 70/100
+250/250 [==============================] - 0s 548us/step - loss: 0.6172 - mae: 0.5575 - val_loss: 0.9341 - val_mae: 0.6683
+Epoch 71/100
+250/250 [==============================] - 0s 551us/step - loss: 0.6135 - mae: 0.5557 - val_loss: 0.9606 - val_mae: 0.6779
+Epoch 72/100
+250/250 [==============================] - 0s 539us/step - loss: 0.6021 - mae: 0.5448 - val_loss: 0.9447 - val_mae: 0.6638
+Epoch 73/100
+250/250 [==============================] - 0s 547us/step - loss: 0.6066 - mae: 0.5430 - val_loss: 0.9215 - val_mae: 0.6708
+Epoch 74/100
+250/250 [==============================] - 0s 547us/step - loss: 0.5691 - mae: 0.5309 - val_loss: 0.8879 - val_mae: 0.6436
+Epoch 75/100
+250/250 [==============================] - 0s 559us/step - loss: 0.5715 - mae: 0.5264 - val_loss: 0.8695 - val_mae: 0.6356
+Epoch 76/100
+250/250 [==============================] - 0s 556us/step - loss: 0.5504 - mae: 0.5178 - val_loss: 0.8353 - val_mae: 0.6204
+Epoch 77/100
+250/250 [==============================] - 0s 554us/step - loss: 0.5570 - mae: 0.5209 - val_loss: 0.8155 - val_mae: 0.6134
+Epoch 78/100
+250/250 [==============================] - 0s 570us/step - loss: 0.5732 - mae: 0.5266 - val_loss: 0.8470 - val_mae: 0.6240
+Epoch 79/100
+250/250 [==============================] - 0s 560us/step - loss: 0.5369 - mae: 0.5105 - val_loss: 0.8250 - val_mae: 0.6194
+Epoch 80/100
+250/250 [==============================] - 0s 551us/step - loss: 0.5342 - mae: 0.5041 - val_loss: 0.8309 - val_mae: 0.6080
+Epoch 81/100
+250/250 [==============================] - 0s 545us/step - loss: 0.5244 - mae: 0.5008 - val_loss: 0.7869 - val_mae: 0.5949
+Epoch 82/100
+250/250 [==============================] - 0s 586us/step - loss: 0.5192 - mae: 0.4946 - val_loss: 0.8131 - val_mae: 0.6085
+Epoch 83/100
+250/250 [==============================] - 0s 566us/step - loss: 0.5134 - mae: 0.4923 - val_loss: 0.8159 - val_mae: 0.6023
+Epoch 84/100
+250/250 [==============================] - 0s 549us/step - loss: 0.5066 - mae: 0.4935 - val_loss: 0.8302 - val_mae: 0.6164
+Epoch 85/100
+250/250 [==============================] - 0s 547us/step - loss: 0.5008 - mae: 0.4859 - val_loss: 0.7964 - val_mae: 0.6058
+Epoch 86/100
+250/250 [==============================] - 0s 557us/step - loss: 0.5037 - mae: 0.4838 - val_loss: 0.8087 - val_mae: 0.6256
+Epoch 87/100
+250/250 [==============================] - 0s 554us/step - loss: 0.4934 - mae: 0.4766 - val_loss: 0.7678 - val_mae: 0.5769
+Epoch 88/100
+250/250 [==============================] - 0s 552us/step - loss: 0.4979 - mae: 0.4802 - val_loss: 0.7671 - val_mae: 0.5896
+Epoch 89/100
+250/250 [==============================] - 0s 556us/step - loss: 0.4978 - mae: 0.4762 - val_loss: 0.7464 - val_mae: 0.5721
+Epoch 90/100
+250/250 [==============================] - 0s 560us/step - loss: 0.4822 - mae: 0.4704 - val_loss: 0.7410 - val_mae: 0.5757
+Epoch 91/100
+250/250 [==============================] - 0s 555us/step - loss: 0.4903 - mae: 0.4734 - val_loss: 0.7682 - val_mae: 0.5816
+Epoch 92/100
+250/250 [==============================] - 0s 547us/step - loss: 0.4827 - mae: 0.4702 - val_loss: 0.7371 - val_mae: 0.5707
+Epoch 93/100
+250/250 [==============================] - 0s 546us/step - loss: 0.4798 - mae: 0.4684 - val_loss: 0.7589 - val_mae: 0.5808
+Epoch 94/100
+250/250 [==============================] - 0s 559us/step - loss: 0.4782 - mae: 0.4670 - val_loss: 0.7535 - val_mae: 0.5825
+Epoch 95/100
+250/250 [==============================] - 0s 559us/step - loss: 0.4938 - mae: 0.4772 - val_loss: 0.7923 - val_mae: 0.6051
+Epoch 96/100
+250/250 [==============================] - 0s 546us/step - loss: 0.4687 - mae: 0.4616 - val_loss: 0.7251 - val_mae: 0.5684
+Epoch 97/100
+250/250 [==============================] - 0s 558us/step - loss: 0.4651 - mae: 0.4588 - val_loss: 0.7492 - val_mae: 0.5675
+Epoch 98/100
+250/250 [==============================] - 0s 541us/step - loss: 0.4669 - mae: 0.4574 - val_loss: 0.7812 - val_mae: 0.5974
+Epoch 99/100
+250/250 [==============================] - 0s 561us/step - loss: 0.4786 - mae: 0.4677 - val_loss: 0.7301 - val_mae: 0.5768
+Epoch 100/100
+250/250 [==============================] - 0s 548us/step - loss: 0.4751 - mae: 0.4686 - val_loss: 0.7307 - val_mae: 0.5679
+#+end_example
+
+#+begin_src jupyter-python
+p = plt.plot(history.epoch, np.array(history.history['val_loss']), label='val loss')
+plt.legend();plt.grid('minor')
+#+end_src
+
+#+RESULTS:
+[[file:./.ob-jupyter/2ca18a999a4651d57c1325372d38ab2239ccc96d.png]]
+
+- Test
+
+#+begin_src jupyter-python
+fftin = np.zeros((1, 2*NFFT))
+fftin[:, 0::2] = ypn[0:NFFT]
+fftout = model.predict(fftin).flatten()
+fftout_real = fftout[0::2]
+fftout_imag = fftout[1::2]
+p = plt.figure()
+p = plt.plot(xf, 2.0/NFFT * fftout_real[0:NFFT//2], label='NN FFT')
+p = plt.plot(xf, 2.0/N * yf.real[:N//2],'r', label='Scipy FFT')
+plt.title('Real'); plt.grid('minor'); plt.legend();
+p = plt.figure()
+p = plt.plot(xf, 2.0/NFFT * fftout_imag[0:NFFT//2], label='NN FFT')
+p = plt.plot(xf, 2.0/N * yf.imag[:N//2], 'r', label='Scipy FFT')
+plt.title('Imag'); plt.grid('minor'); plt.legend();
+p = plt.figure()
+p = plt.plot(xf, 2.0/NFFT * np.abs((fftout_real+1j*fftout_imag)[0:NFFT//2]), label='NN FFT')
+p = plt.plot(xf, 2.0/N * np.abs(yf[:N//2]),'r', label='Scipy FFT')
+plt.title('Magnitude'); plt.grid('minor'); plt.legend();
+
+#+end_src
+
+#+RESULTS:
+:RESULTS:
+[[file:./.ob-jupyter/34130fc926c64055cd0ae00733282c3d0f25efd5.png]]
+[[file:./.ob-jupyter/f765da7c763df96eb28354ae8a2fb027635e461a.png]]
+[[file:./.ob-jupyter/fa63e813829eb793640ff4068c01c20aa18351b7.png]]
+:END:
+
+#+begin_src jupyter-python
+yf.real
+#+end_src
+
+#+RESULTS:
+#+begin_example
+array([  9.34128469,  18.34682739, -24.84580323, -10.77024085,
+       -10.58887752,  14.52557042,  -0.30083154,   2.47977312,
+        -1.22499006,  -3.9794455 ,   1.60121267,   0.02514855,
+         4.39576485,   0.88697111,  -2.63206678,  -0.21357117,
+        -0.56925668,  -0.98894359,  -4.01042752,   2.53028364,
+         0.67938213,  -1.39769928,  -1.55665597,  -1.4420215 ,
+         0.79288398,  -0.44827004,  -4.23260038,   1.77492458,
+        -0.92073176,  -0.35945133,   5.21772303,  -3.62129381,
+         0.02629773,  -3.62129381,   5.21772303,  -0.35945133,
+        -0.92073176,   1.77492458,  -4.23260038,  -0.44827004,
+         0.79288398,  -1.4420215 ,  -1.55665597,  -1.39769928,
+         0.67938213,   2.53028364,  -4.01042752,  -0.98894359,
+        -0.56925668,  -0.21357117,  -2.63206678,   0.88697111,
+         4.39576485,   0.02514855,   1.60121267,  -3.9794455 ,
+        -1.22499006,   2.47977312,  -0.30083154,  14.52557042,
+       -10.58887752, -10.77024085, -24.84580323,  18.34682739])
+#+end_example
+
+- FFT of Random Data
+
+#+begin_src jupyter-python
+test_data = np.random.normal(0,1,(1000, NFFT*2))
+test_labels = np.random.normal(0,1,(1000, NFFT*2))
+for el in range(1000):
+  fftin = test_data[el,0::2] + 1j*test_data[el,1::2]
+  test_labels[el,0::2] = fft(fftin).real
+  test_labels[el,1::2] = fft(fftin).imag
+
+dnn_out = model.predict(test_data).flatten()
+keras_dnn_err = test_labels.flatten() - dnn_out
+#+end_src
+
+#+begin_src jupyter-python
+dnn_fft_mse = 10*np.log10(np.mean(pow(np.abs(keras_dnn_err),2)))
+labels_sigpow = 10*np.log10(np.mean(pow(np.abs(test_labels.flatten()),2)))
+print("Neural Network FFT SNR: ", labels_sigpow - dnn_fft_mse)
+#+end_src
+
+#+RESULTS:
+: Neural Network FFT SNR:  19.507438795387994
+
+#+begin_src jupyter-python
+fftout_real = dnn_out[0::2]
+fftout_imag = dnn_out[1::2]
+yf_real = test_labels[0, 0::2]
+yf_imag = test_labels[0, 1::2]
+
+p = plt.figure()
+p = plt.plot(xf, 2.0/NFFT * fftout_real[0:NFFT//2], label='NN FFT')
+p = plt.plot(xf, 2.0/N * yf_real[0:NFFT//2], 'r', label='Scipy FFT')
+plt.title('Real'); plt.grid('minor'); plt.legend();
+
+p = plt.figure()
+p = plt.plot(xf, 2.0/NFFT * fftout_imag[0:NFFT//2], label='NN FFT')
+p = plt.plot(xf, 2.0/N * yf_imag[0:NFFT//2], 'r', label='Scipy FFT')
+plt.title('Imag'); plt.grid('minor'); plt.legend();
+
+p = plt.figure()
+p = plt.plot(xf, 2.0/NFFT * np.abs((fftout_real+1j*fftout_imag)[0:NFFT//2]), label='NN FFT')
+p = plt.plot(xf, 2.0/N * np.abs(yf_real+1j*yf_imag)[0:NFFT//2],'r', label='Scipy FFT')
+plt.title('Magnitude'); plt.grid('minor'); plt.legend();
+
+#+end_src
+
+#+RESULTS:
+:RESULTS:
+[[file:./.ob-jupyter/39c775ffed1ad5fe5411cff0ac90b9eda55a2e40.png]]
+[[file:./.ob-jupyter/fcfd68e2ab52b78b1f950817531ff7f5fa1f3ff0.png]]
+[[file:./.ob-jupyter/c71a2f81b1aabf63fb0548c649788dcb209312dc.png]]
+:END:
