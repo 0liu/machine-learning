@@ -1,3 +1,6 @@
+# Nextcloud sync ignores
+.sync-exclude.lst
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
