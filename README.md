@@ -15,5 +15,5 @@ This repo hosts my code and notebooks on machine learning and data science proje
 ### 0. [Catch Joe](00_catch_joe/)
 - [README](00_catch_joe/)
 - Presentation: [catch_joe.pptx](00_catch_joe/catch_joe.pptx)
-- EDA and modeling: [catch_joe.ipynb](https://nbviewer.org/github/0liu/machine-learning/blob/master/00_catch_joe/catch_joe.ipynb) [catch_joe.org](00_catch_joe/catch_joe.org)
-- Full pipeline: [catch_joe.py](00_catch_joe/catch_joe.py)
+- EDA and Modeling Notebook: [catch_joe.ipynb](https://nbviewer.org/github/0liu/machine-learning/blob/master/00_catch_joe/catch_joe.ipynb) 
+- Full Pipeline: [catch_joe.py](00_catch_joe/catch_joe.py)
