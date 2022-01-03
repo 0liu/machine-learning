@@ -22,19 +22,17 @@ This competition aims at the problem of forecasting multiple time series, the fu
 
 # Solution Summary
 
-## Exploratory Data Analysis 
-- Notebook: [web_traffic_forecasting_EDA.ipynb](#web_traffic_forecasting_EDA.ipynb)
-- Feature engineering
-  - Yearly seasonality
-    The model is trained on 2016 data, test prediction on the same date range in 2017.
-  - log1p transformation on visits
-    The orders of magnitude of visits are from 1 to 1e7, and 1+x on visits to address 0 views.
-  - Diff of weekly medians and the latest 16-week medians
-    Besides categorical features (website, access, agents), the only numerical features for training are these median differences on the log1p tranformed visits.
+[EDA Notebook: web_traffic_forecasting_EDA.ipynb](https://nbviewer.org/github/0liu/machine-learning/blob/master/02_web_traffic_time_series_forecasting/web_traffic_forecasting_EDA.ipynb)  |  [Modeling Notebook: web_traffic_forecasting_DNN.ipynb](https://nbviewer.org/github/0liu/machine-learning/blob/master/02_web_traffic_time_series_forecasting/web_traffic_forecasting_DNN.ipynb)
+
+## Exploratory Data Analysis and Feature engineering
+- Yearly seasonality
+  The model is trained on 2016 data, test prediction on the same date range in 2017.
+- log1p transformation on visits
+  The orders of magnitude of visits are from 1 to 1e7, and 1+x on visits to address 0 views.
+- Diff of weekly medians and the latest 16-week medians
+  Besides categorical features (website, access, agents), the only numerical features for training are these median differences on the log1p tranformed visits.
 
 ## Bagging of DNN
-- Notebook: [web_traffic_forecasting_DNN.ipynb](#web_traffic_forecasting_DNN.ipynb)
-  
 <img src="images/dnn.png" width='600'>
 
 - A bag of same DNN models that predict median differences.
