@@ -28,7 +28,7 @@ This competition uses hierarchical sales data from Walmart, the world’s larges
 <img src="images/agg_levels.png" width='600'>
 
 # Solution Files
-- [m5_sales_accuracy_ensemble_gbt.ipynb](https://nbviewer.org/github/0liu/machine-learning/blob/master/01_m5-forecasting-accuracy/m5_sales_accuracy_ensemble_gbt.ipynb)  [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://github.com/0liu/machine-learning/blob/master/01_m5-forecasting-accuracy/m5_sales_accuracy_ensemble_gbt.ipynb)  [![nbviewer](https://raw.githubusercontent.com/jupyter/design/master/logos/Badges/nbviewer_badge.svg)](https://nbviewer.org/github/0liu/machine-learning/blob/master/01_m5-forecasting-accuracy/m5_sales_accuracy_ensemble_gbt.ipynb)
+- [m5_sales_accuracy_ensemble_gbt.ipynb](https://nbviewer.org/github/0liu/machine-learning/blob/master/01_m5-forecasting-accuracy/m5_sales_accuracy_ensemble_gbt.ipynb)  [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/0liu/machine-learning/blob/master/01_m5-forecasting-accuracy/m5_sales_accuracy_ensemble_gbt.ipynb)  [![nbviewer](https://raw.githubusercontent.com/jupyter/design/master/logos/Badges/nbviewer_badge.svg)](https://nbviewer.org/github/0liu/machine-learning/blob/master/01_m5-forecasting-accuracy/m5_sales_accuracy_ensemble_gbt.ipynb)
   
   For ensemble gradient boosting trees modeling, this is the all-in-one Jupyter notebook from data processing to model training and prediction.
 - [m5_sales_accuracy_ensemble_gbt_kernel.py](m5_sales_accuracy_ensemble_gbt_kernel.py)
