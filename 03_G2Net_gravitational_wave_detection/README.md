@@ -27,16 +27,24 @@ This competition aims at the problem of forecasting multiple time series, the fu
 - [1-D CNN Modeling Notebook: G2Net_CNN1D_GeM_SGDW_Highpass.ipynb](https://nbviewer.org/github/0liu/machine-learning/blob/master/03_G2Net_gravitational_wave_detection/G2Net_CNN1D_GeM_SGDW_Highpass.ipynb)  [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/0liu/machine-learning/blob/master/03_G2Net_gravitational_wave_detection/G2Net_CNN1D_GeM_SGDW_Highpass.ipynb)  [![nbviewer](https://raw.githubusercontent.com/jupyter/design/master/logos/Badges/nbviewer_badge.svg)](https://nbviewer.org/github/0liu/machine-learning/blob/master/03_G2Net_gravitational_wave_detection/G2Net_CNN1D_GeM_SGDW_Highpass.ipynb)
 
 # Solution Summary
-- Front-end
+## Front-end
   - Scaling by 1e+20
   - Tukey window (Optinal. Rect window also works.)
   - High pass filter
     - 5-th order Butterworth filter
     - Cut-off frequency 20.43 Hz
-- Deep learning
-  - 1-D CNN architecture: Conv1D + Batch Normalization + Pooling. Modified from this paper: [H. Gabbard et al., Matching Matched Filtering with Deep Networks for Gravitational-Wave Astronomy, Phys. Rev. Lett. 120, 141103, April 6, 2018.](https://journals.aps.org/prl/pdf/10.1103/PhysRevLett.120.141103)
+
+    <img src="images/g2net_filtered_time_plot.png" width=650>
+    <img src="images/g2net_filtered_spectrogram.png" width=650>
+
+## 1-D CNN
+  - Architecture: Conv1D + Batch Normalization + Pooling. Modified from this paper: [H. Gabbard et al., Matching Matched Filtering with Deep Networks for Gravitational-Wave Astronomy, Phys. Rev. Lett. 120, 141103, April 6, 2018.](https://journals.aps.org/prl/pdf/10.1103/PhysRevLett.120.141103)
   - Max pooling layers are replaced with GeM pooling (Generalized Mean pooling).
-  $$\textbf{e} = \left[\left(\frac{1}{|\Omega|}\sum_{u\in{\Omega}}x^{p}_{cu}\right)^{\frac{1}{p}}\right]_{c=1,\cdots,C} $$
+  
+      ![equation](https://latex.codecogs.com/svg.image?\textbf{e}&space;=&space;\left[\left\(\frac{1}{|\Omega|}\sum_{u\in{\Omega}}x^{p}_{cu}\right\)^{\frac{1}{p}}\right]_{c=1,\cdots,C})
+
   - Elu activations are replaced with Silu layers.
   - Training: 5 folds. Each fold with batch size 128, 20 Epochs.
   - Inference: The mean of the inferences by the stacking 5-fold models.
+
+    <img src="images/cnn1d.png" width=400>
