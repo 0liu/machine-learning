@@ -16,9 +16,3 @@ This repo hosts my code and notebooks on machine learning and data science.
 ### [M5 Forecasting - Accuracy (kaggle 2020)](01_m5-forecasting-accuracy/)
 - [README](01_m5-forecasting-accuracy/)
 - Notebook: [m5_sales_accuracy_ensemble_gbt.ipynb](https://nbviewer.org/github/0liu/machine-learning/blob/master/01_m5-forecasting-accuracy/m5_sales_accuracy_ensemble_gbt.ipynb)  [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/0liu/machine-learning/blob/master/01_m5-forecasting-accuracy/m5_sales_accuracy_ensemble_gbt.ipynb)  [![nbviewer](https://raw.githubusercontent.com/jupyter/design/master/logos/Badges/nbviewer_badge.svg)](https://nbviewer.org/github/0liu/machine-learning/blob/master/01_m5-forecasting-accuracy/m5_sales_accuracy_ensemble_gbt.ipynb)
-
-### [Catch Joe](00_catch_joe/)
-- [README](00_catch_joe/)
-- Presentation: [catch_joe.pptx](00_catch_joe/catch_joe.pptx)
-- EDA and Modeling Notebook: [catch_joe.ipynb](https://nbviewer.org/github/0liu/machine-learning/blob/master/00_catch_joe/catch_joe.ipynb)   [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/0liu/machine-learning/blob/master/00_catch_joe/catch_joe.ipynb)  [![nbviewer](https://raw.githubusercontent.com/jupyter/design/master/logos/Badges/nbviewer_badge.svg)](https://nbviewer.org/github/0liu/machine-learning/blob/master/00_catch_joe/catch_joe.ipynb)
-- Full Pipeline: [catch_joe.py](00_catch_joe/catch_joe.py)
