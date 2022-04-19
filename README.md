@@ -19,3 +19,4 @@ This repo hosts my code and notebooks on machine learning and data science.
 
 ### [Identify Web User](00_catch_joe/)
 - [README](00_catch_joe/)
+- Notebook: [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/0liu/machine-learning/blob/master/00_catch_joe/catch_joe.ipynb) [![nbviewer](https://raw.githubusercontent.com/jupyter/design/master/logos/Badges/nbviewer_badge.svg)](https://nbviewer.org/github/0liu/machine-learning/blob/master/00_catch_joe/catch_joe.ipynb)
